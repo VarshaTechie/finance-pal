@@ -114,8 +114,16 @@ const Dashboard = () => {
   }
 
   if (!summary) {
-    return <div>Failed to load dashboard data</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Failed to load dashboard data</p>
+      </div>
+    );
   }
+
+  // Ensure arrays exist with fallbacks
+  const expensesByCategory = summary.expensesByCategory || [];
+  const monthlyTrend = summary.monthlyTrend || [];
 
   const savingsPercentage = ((summary.estimatedSavings / summary.monthlyIncome) * 100).toFixed(1);
 
@@ -175,7 +183,7 @@ const Dashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={summary.expensesByCategory}
+                    data={expensesByCategory}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -183,10 +191,10 @@ const Dashboard = () => {
                     paddingAngle={2}
                     dataKey="amount"
                     nameKey="category"
-                    label={({ category, percentage }) => `${category} (${percentage.toFixed(0)}%)`}
+                    label={({ category, percentage }) => `${category} (${percentage?.toFixed(0) || 0}%)`}
                     labelLine={false}
                   >
-                    {summary.expensesByCategory.map((_, index) => (
+                    {expensesByCategory.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -213,7 +221,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={summary.monthlyTrend}>
+                <AreaChart data={monthlyTrend}>
                   <defs>
                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(166, 72%, 37%)" stopOpacity={0.3} />

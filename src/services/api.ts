@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 2000, // Short timeout since we fallback to mock data
   headers: {
     'Content-Type': 'application/json',
   },
@@ -268,6 +268,10 @@ export const expenseApi = {
 
 export const summaryApi = {
   get: async (): Promise<Summary> => {
+    // Return mock data directly for demo (no backend connected)
+    // When a real API is available, uncomment the try-catch below
+    return mockSummary;
+    /*
     try {
       const response = await api.get<Summary>('/summary');
       return response.data;
@@ -277,38 +281,24 @@ export const summaryApi = {
       }
       throw error;
     }
+    */
   },
 };
 
 export const recommendationsApi = {
   get: async (): Promise<Recommendation> => {
-    try {
-      const response = await api.get<Recommendation>('/recommendations');
-      return response.data;
-    } catch (error) {
-      if (shouldUseMock(error)) {
-        return mockRecommendations;
-      }
-      throw error;
-    }
+    // Return mock data directly for demo
+    return mockRecommendations;
   },
 };
 
 export const newsApi = {
   get: async (category?: string): Promise<NewsItem[]> => {
-    try {
-      const params = category ? { category } : {};
-      const response = await api.get<NewsItem[]>('/news', { params });
-      return response.data;
-    } catch (error) {
-      if (shouldUseMock(error)) {
-        if (category) {
-          return mockNews.filter(item => item.category === category);
-        }
-        return mockNews;
-      }
-      throw error;
+    // Return mock data directly for demo
+    if (category) {
+      return mockNews.filter(item => item.category === category);
     }
+    return mockNews;
   },
 };
 
