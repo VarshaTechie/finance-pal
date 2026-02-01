@@ -1,12 +1,14 @@
 import axios, { AxiosError } from 'axios';
 
 // API base URL - can be configured via environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = 'http://localhost:5000/api';
+// Demo User ID (Hardcoded for immediate dashboard access)
+const DEMO_USER_ID = '697df75d40b344604c69ec9f';
 
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 2000, // Short timeout since we fallback to mock data
+  timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,12 +33,12 @@ export interface Expense {
   createdAt?: string;
 }
 
-export type ExpenseCategory = 
-  | 'Food' 
-  | 'Travel' 
-  | 'Rent' 
-  | 'Entertainment' 
-  | 'Utilities' 
+export type ExpenseCategory =
+  | 'Food'
+  | 'Travel'
+  | 'Rent'
+  | 'Entertainment'
+  | 'Utilities'
   | 'Others';
 
 export interface Summary {
@@ -45,6 +47,12 @@ export interface Summary {
   estimatedSavings: number;
   expensesByCategory: { category: string; amount: number; percentage: number }[];
   monthlyTrend: { month: string; expenses: number; income: number }[];
+  comparison?: {
+    previousTotalExpenses: number;
+    expenseChange: number;
+    incomeChange: number;
+    savingsChange: number;
+  };
 }
 
 export interface Recommendation {
@@ -72,166 +80,67 @@ export interface NewsItem {
   summary?: string;
 }
 
-// Mock data for fallback
-const mockSummary: Summary = {
-  monthlyIncome: 75000,
-  totalExpenses: 45000,
-  estimatedSavings: 30000,
-  expensesByCategory: [
-    { category: 'Rent', amount: 15000, percentage: 33.3 },
-    { category: 'Food', amount: 10000, percentage: 22.2 },
-    { category: 'Travel', amount: 5000, percentage: 11.1 },
-    { category: 'Utilities', amount: 5000, percentage: 11.1 },
-    { category: 'Entertainment', amount: 5000, percentage: 11.1 },
-    { category: 'Others', amount: 5000, percentage: 11.1 },
-  ],
-  monthlyTrend: [
-    { month: 'Aug', expenses: 42000, income: 75000 },
-    { month: 'Sep', expenses: 48000, income: 75000 },
-    { month: 'Oct', expenses: 44000, income: 75000 },
-    { month: 'Nov', expenses: 46000, income: 78000 },
-    { month: 'Dec', expenses: 52000, income: 80000 },
-    { month: 'Jan', expenses: 45000, income: 75000 },
-  ],
-};
-
-const mockRecommendations: Recommendation = {
-  id: '1',
-  suggestedSavings: 35000,
-  currentSavingsRate: 40,
-  targetSavingsRate: 50,
-  categoryReductions: [
-    {
-      category: 'Entertainment',
-      currentSpend: 5000,
-      suggestedSpend: 3500,
-      potentialSavings: 1500,
-      tip: 'Consider streaming services instead of frequent movie outings',
-    },
-    {
-      category: 'Food',
-      currentSpend: 10000,
-      suggestedSpend: 8000,
-      potentialSavings: 2000,
-      tip: 'Meal prepping on weekends can reduce dining out expenses',
-    },
-    {
-      category: 'Travel',
-      currentSpend: 5000,
-      suggestedSpend: 3500,
-      potentialSavings: 1500,
-      tip: 'Use public transport or carpooling for daily commute',
-    },
-  ],
-  insights: [
-    'Your savings rate is good but can be improved to reach financial goals faster',
-    'Consider setting up automatic transfers to a savings account',
-    'Emergency fund should cover 6 months of expenses (₹2.7L recommended)',
-    'Look into tax-saving investments under Section 80C',
-  ],
-};
-
-const mockNews: NewsItem[] = [
-  {
-    id: '1',
-    headline: 'RBI Maintains Repo Rate at 6.5% for Fifth Consecutive Time',
-    source: 'Economic Times',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    url: '#',
-    category: 'economy',
-    summary: 'The Reserve Bank of India kept the benchmark interest rate unchanged, citing inflation concerns.',
-  },
-  {
-    id: '2',
-    headline: 'Sensex Hits All-Time High, Crosses 73,000 Mark',
-    source: 'Moneycontrol',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    url: '#',
-    category: 'markets',
-    summary: 'Indian stock markets rallied on strong FII inflows and positive global cues.',
-  },
-  {
-    id: '3',
-    headline: 'New Tax Regime vs Old: Which is Better for Salaried Employees?',
-    source: 'Livemint',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    url: '#',
-    category: 'personal-finance',
-    summary: 'A comprehensive guide to help you choose the right tax regime based on your deductions.',
-  },
-  {
-    id: '4',
-    headline: 'Gold Prices Surge Amid Global Uncertainty',
-    source: 'Business Standard',
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-    url: '#',
-    category: 'markets',
-    summary: 'Gold prices hit record highs as investors seek safe-haven assets.',
-  },
-  {
-    id: '5',
-    headline: 'SIP Investments Cross ₹18,000 Crore Monthly Milestone',
-    source: 'NDTV Profit',
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-    url: '#',
-    category: 'personal-finance',
-    summary: 'Retail investors continue to pour money into mutual funds through systematic investment plans.',
-  },
-  {
-    id: '6',
-    headline: 'Bitcoin Crosses $50,000 for First Time Since 2021',
-    source: 'CoinDesk',
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    url: '#',
-    category: 'crypto',
-    summary: 'The cryptocurrency market sees renewed interest ahead of Bitcoin halving event.',
-  },
-];
-
 // Helper to check if we should use mock data
+// We keep this just in case, but we try to avoid using it
 const shouldUseMock = (error: unknown): boolean => {
-  if (error instanceof AxiosError) {
-    // Use mock if network error or server not available
-    return error.code === 'ERR_NETWORK' || 
-           error.response?.status === 404 ||
-           error.code === 'ECONNABORTED';
-  }
-  return true;
+  return false; // Force real API usage where possible
 };
 
 // API Functions
 export const incomeApi = {
   save: async (income: Omit<Income, 'id' | 'createdAt'>): Promise<Income> => {
     try {
-      const response = await api.post<Income>('/income', income);
-      return response.data;
+      // Map month name to index
+      const monthIndex = new Date(`${income.month} 1, 2000`).getMonth();
+
+      // Map frontend model to backend expected body
+      const backendBody = {
+        userId: DEMO_USER_ID, // Use demo ID for updates too
+        name: "Main User",
+        email: "main@finance.com",
+        monthlyIncome: income.amount,
+        month: monthIndex, // Pass month index (0-11)
+        year: income.year
+      };
+
+      const response = await api.post('/income', backendBody);
+
+      // Return correctly mapped response
+      return {
+        amount: response.data.data.monthlyIncome,
+        currency: '₹',
+        month: income.month,
+        year: income.year,
+        id: response.data.data._id
+      };
     } catch (error) {
-      if (shouldUseMock(error)) {
-        // Return mock response for demo
-        return {
-          ...income,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        };
-      }
+      console.error("Income save failed", error);
       throw error;
     }
   },
 
   get: async (): Promise<Income | null> => {
     try {
-      const response = await api.get<Income>('/income');
-      return response.data;
-    } catch (error) {
-      if (shouldUseMock(error)) {
+      const response = await api.get(`/income/${DEMO_USER_ID}`);
+      if (response.data.success) {
         return {
-          amount: 75000,
+          amount: response.data.data.monthlyIncome,
           currency: '₹',
-          month: 'January',
+          month: 'January', // Backend doesn't store this yet, defaulting
           year: 2026,
+          id: response.data.data._id
         };
       }
-      throw error;
+      return null;
+    } catch (error) {
+      console.error("Income fetch failed", error);
+      // Fallback to default for smoother UX if API fails
+      return {
+        amount: 85000,
+        currency: '₹',
+        month: 'January',
+        year: 2026,
+      };
     }
   },
 };
@@ -239,62 +148,186 @@ export const incomeApi = {
 export const expenseApi = {
   save: async (expense: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> => {
     try {
-      const response = await api.post<Expense>('/expenses', expense);
-      return response.data;
+      const backendBody = {
+        userId: DEMO_USER_ID,
+        amount: expense.amount,
+        category: expense.category,
+        date: expense.date,
+        description: expense.description || ''
+      };
+
+      const response = await api.post('/expenses', backendBody);
+
+      return {
+        ...expense,
+        id: response.data.data._id,
+        createdAt: response.data.data.createdAt
+      };
     } catch (error) {
-      if (shouldUseMock(error)) {
-        return {
-          ...expense,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        };
-      }
+      console.error("Expense save failed", error);
       throw error;
     }
   },
 
   getAll: async (): Promise<Expense[]> => {
     try {
-      const response = await api.get<Expense[]>('/expenses');
-      return response.data;
-    } catch (error) {
-      if (shouldUseMock(error)) {
-        return [];
+      const response = await api.get(`/expenses/${DEMO_USER_ID}`);
+      if (response.data.success && Array.isArray(response.data.data)) {
+        return response.data.data.map((item: any) => ({
+          id: item._id,
+          amount: item.amount,
+          category: item.category as ExpenseCategory,
+          date: item.date,
+          description: item.description,
+          createdAt: item.createdAt
+        }));
       }
-      throw error;
+      return [];
+    } catch (error) {
+      console.error("Expenses fetch failed", error);
+      return [];
     }
   },
 };
 
 export const summaryApi = {
-  get: async (): Promise<Summary> => {
-    // Return mock data directly for demo (no backend connected)
-    // When a real API is available, uncomment the try-catch below
-    return mockSummary;
-    /*
+  get: async (period?: { month: number; year: number }): Promise<Summary> => {
     try {
-      const response = await api.get<Summary>('/summary');
-      return response.data;
-    } catch (error) {
-      if (shouldUseMock(error)) {
-        return mockSummary;
+      let url = `/summary/${DEMO_USER_ID}`;
+
+      if (period) {
+        // Construct date range for the selected month/year
+        // Create date objects in local time
+        const startDate = new Date(period.year, period.month, 1);
+        const endDate = new Date(period.year, period.month + 1, 0); // Last day of month
+
+        // Format as YYYY-MM-DD for backend
+        // Note: We use manual formatting to avoid timezone shifts affecting the date string
+        const startStr = `${period.year}-${String(period.month + 1).padStart(2, '0')}-01`;
+        const endStr = `${period.year}-${String(period.month + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+        url += `?startDate=${startStr}&endDate=${endStr}`;
       }
+
+      const response = await api.get(url);
+      if (response.data.success) {
+        const data = response.data.data;
+
+        // Map category breakdown object to array
+        const expensesByCategory = Object.entries(data.categoryBreakdown || {}).map(([category, amount]) => ({
+          category,
+          amount: Number(amount),
+          percentage: data.totalExpenses > 0 ? (Number(amount) / data.totalExpenses) * 100 : 0
+        }));
+
+        return {
+          monthlyIncome: data.monthlyIncome,
+          totalExpenses: data.totalExpenses,
+          estimatedSavings: data.balance, // 'balance' in backend is 'estimatedSavings' here
+          expensesByCategory: expensesByCategory,
+          comparison: data.comparison, // Pass through comparison data
+          // Mock trend data for charts (backend feature pending)
+          monthlyTrend: [
+            { month: 'Aug', expenses: 42000, income: data.monthlyIncome },
+            { month: 'Sep', expenses: 48000, income: data.monthlyIncome },
+            { month: 'Oct', expenses: 44000, income: data.monthlyIncome },
+            { month: 'Nov', expenses: 46000, income: data.monthlyIncome + 3000 },
+            { month: 'Dec', expenses: 52000, income: data.monthlyIncome + 5000 },
+            { month: 'Jan', expenses: data.totalExpenses, income: data.monthlyIncome },
+          ]
+        };
+      }
+      // Should not happen if backend is running
+      throw new Error("Failed to fetch summary");
+    } catch (error) {
+      console.error("Summary fetch failed", error);
       throw error;
     }
-    */
   },
 };
 
 export const recommendationsApi = {
   get: async (): Promise<Recommendation> => {
-    // Return mock data directly for demo
-    return mockRecommendations;
+    try {
+      const response = await api.get(`/recommendations/${DEMO_USER_ID}`);
+      if (response.data.success) {
+        const data = response.data.data;
+
+        // Map backend suggestion object to array
+        const categoryReductions = Object.entries(data.categorySuggestions || {}).map(([category, details]: [string, any]) => ({
+          category: category,
+          currentSpend: details.currentSpending,
+          suggestedSpend: details.recommendedSpending,
+          potentialSavings: details.potentialSavings,
+          tip: details.status === 'overspending'
+            ? `Reduce ${category} spending by ₹${details.potentialSavings}`
+            : `Good job on ${category}!`
+        }));
+
+        return {
+          id: new Date().toISOString(),
+          suggestedSavings: data.recommendedSavings,
+          currentSavingsRate: 100 - data.expenseToIncomeRatio,
+          targetSavingsRate: 20, // 20% rule
+          categoryReductions: categoryReductions,
+          insights: [
+            data.expenseToIncomeRatio > 50 ? 'Expenses are high (over 50% of income)' : 'Expenses are within healthy limits',
+            `You could save ₹${data.recommendedSavings.toLocaleString()} more per month`,
+            'Emergency fund recommended: 6x monthly expenses'
+          ]
+        };
+      }
+      throw new Error("Failed to fetch recommendations");
+    } catch (error) {
+      console.error("Recommendations fetch failed", error);
+      // Fallback mock
+      return {
+        id: '1',
+        suggestedSavings: 0,
+        currentSavingsRate: 0,
+        targetSavingsRate: 20,
+        categoryReductions: [],
+        insights: ['Add expenses to see recommendations']
+      };
+    }
   },
+};
+
+// Helper to categorize news based on content
+const categorizeArticle = (title: string, description: string): NewsItem['category'] => {
+  const text = `${title} ${description}`.toLowerCase();
+
+  if (text.match(/bitcoin|crypto|ethereum|blockchain|coin|token/)) return 'crypto';
+  if (text.match(/economy|inflation|gdp|rate|bank|fed|tax|recession/)) return 'economy';
+  if (text.match(/saving|invest|retirement|wealth|money|planning|budget|expense/)) return 'personal-finance';
+  if (text.match(/stock|share|equity|dividend|nasdaq|dow|s&p/)) return 'stocks';
+
+  return 'markets';
 };
 
 export const newsApi = {
   get: async (category?: string): Promise<NewsItem[]> => {
-    // Return mock data directly for demo
+    const mockNews: NewsItem[] = [
+      { id: '1', headline: 'Market Rally', source: 'FT', timestamp: new Date().toISOString(), url: '#', category: 'markets' }
+    ];
+
+    try {
+      const { data } = await axios.get('http://localhost:5000/api/news');
+      if (data.success && Array.isArray(data.articles)) {
+        return data.articles.map((item: any) => ({
+          id: String(item.id),
+          headline: item.title,
+          source: item.source,
+          timestamp: item.publishedAt,
+          url: item.url,
+          category: categorizeArticle(item.title || '', item.description || ''),
+          summary: item.description
+        }));
+      }
+    } catch (error) {
+      console.warn('Backend API unavailable, using mock data');
+    }
+
     if (category) {
       return mockNews.filter(item => item.category === category);
     }

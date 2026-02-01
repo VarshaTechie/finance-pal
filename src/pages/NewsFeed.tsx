@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { 
-  Newspaper, 
-  ExternalLink, 
+import {
+  Newspaper,
+  ExternalLink,
   Clock,
   TrendingUp,
   Building2,
@@ -30,6 +30,11 @@ const NewsFeed = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  useEffect(() => {
+    setVisibleCount(5); // Reset limit when filter changes
+  }, [activeFilter]);
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -47,9 +52,11 @@ const NewsFeed = () => {
     fetchNews();
   }, [activeFilter]);
 
-  const filteredNews = activeFilter === 'all' 
-    ? news 
+  const filteredNews = activeFilter === 'all'
+    ? news
     : news.filter(item => item.category === activeFilter);
+
+  const displayedNews = filteredNews.slice(0, visibleCount);
 
   if (loading && news.length === 0) {
     return (
@@ -77,7 +84,7 @@ const NewsFeed = () => {
       {/* Filter Tabs */}
       <Tabs defaultValue="all" value={activeFilter} onValueChange={setActiveFilter}>
         <TabsList className="h-auto flex-wrap gap-1 bg-transparent p-0">
-          <TabsTrigger 
+          <TabsTrigger
             value="all"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
@@ -87,8 +94,8 @@ const NewsFeed = () => {
           {Object.entries(categoryConfig).map(([key, config]) => {
             const Icon = config.icon;
             return (
-              <TabsTrigger 
-                key={key} 
+              <TabsTrigger
+                key={key}
                 value={key}
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
@@ -109,12 +116,12 @@ const NewsFeed = () => {
                 </CardContent>
               </Card>
             ) : (
-              filteredNews.map((item, index) => {
+              displayedNews.map((item, index) => {
                 const config = categoryConfig[item.category];
                 const Icon = config?.icon || Newspaper;
-                
+
                 return (
-                  <Card 
+                  <Card
                     key={item.id}
                     className="dashboard-card group cursor-pointer animate-slide-up"
                     style={{ animationDelay: `${index * 50}ms` }}
@@ -128,7 +135,7 @@ const NewsFeed = () => {
                         )}>
                           <Icon className="h-6 w-6" />
                         </div>
-                        
+
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-4">
@@ -154,10 +161,10 @@ const NewsFeed = () => {
                                 Source: {item.source}
                               </p>
                             </div>
-                            
+
                             {/* Read More Button */}
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="icon"
                               className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                               asChild
@@ -179,9 +186,13 @@ const NewsFeed = () => {
       </Tabs>
 
       {/* Load More */}
-      {filteredNews.length > 0 && (
+      {visibleCount < filteredNews.length && (
         <div className="text-center">
-          <Button variant="outline" className="px-8">
+          <Button
+            variant="outline"
+            className="px-8"
+            onClick={() => setVisibleCount(prev => prev + 5)}
+          >
             Load More Articles
           </Button>
         </div>

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Wallet, 
+import { format, addMonths, subMonths } from 'date-fns';
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
   PiggyBank,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { summaryApi, Summary } from '@/services/api';
 import {
@@ -22,6 +26,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { cn } from '@/lib/utils';
 
 const COLORS = [
   'hsl(166, 72%, 37%)', // Primary teal
@@ -85,11 +90,16 @@ const formatCurrency = (amount: number): string => {
 const Dashboard = () => {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
     const fetchSummary = async () => {
+      setLoading(true);
       try {
-        const data = await summaryApi.get();
+        const data = await summaryApi.get({
+          month: selectedDate.getMonth(),
+          year: selectedDate.getFullYear()
+        });
         setSummary(data);
       } catch (error) {
         console.error('Failed to fetch summary:', error);
@@ -99,11 +109,22 @@ const Dashboard = () => {
     };
 
     fetchSummary();
-  }, []);
+  }, [selectedDate]);
+
+  const handlePrevMonth = () => {
+    setSelectedDate(prev => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+    setSelectedDate(prev => addMonths(prev, 1));
+  };
 
   if (loading) {
     return (
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="h-36 animate-pulse bg-muted" />
@@ -130,11 +151,36 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Your financial overview for January 2026
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Overview for {format(selectedDate, 'MMMM yyyy')}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 bg-card border rounded-lg p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handlePrevMonth}
+            className="h-8 w-8"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-[140px] text-center font-medium">
+            {format(selectedDate, 'MMMM yyyy')}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNextMonth}
+            className="h-8 w-8"
+          // Optional: Disable future dates if desired, but user might want to plan
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -143,8 +189,10 @@ const Dashboard = () => {
           <StatCard
             title="Monthly Income"
             value={formatCurrency(summary.monthlyIncome)}
-            change="+₹5,000 from last month"
-            changeType="positive"
+            change={summary.comparison ?
+              `${summary.comparison.incomeChange >= 0 ? '+' : ''}${formatCurrency(summary.comparison.incomeChange)} from last month`
+              : "No history"}
+            changeType={summary.comparison?.incomeChange >= 0 ? 'positive' : 'negative'}
             icon={<Wallet className="h-6 w-6" />}
             variant="primary"
           />
@@ -153,8 +201,10 @@ const Dashboard = () => {
           <StatCard
             title="Total Expenses"
             value={formatCurrency(summary.totalExpenses)}
-            change="-₹7,000 from last month"
-            changeType="positive"
+            change={summary.comparison ?
+              `${summary.comparison.expenseChange >= 0 ? '+' : ''}${formatCurrency(summary.comparison.expenseChange)} from last month`
+              : "No history"}
+            changeType={(summary.comparison?.expenseChange || 0) <= 0 ? 'positive' : 'negative'} // Lower expenses is positive
             icon={<TrendingDown className="h-6 w-6" />}
             variant="accent"
           />
@@ -179,37 +229,43 @@ const Dashboard = () => {
             <CardTitle className="text-lg font-semibold">Expense Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={expensesByCategory}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="amount"
-                    nameKey="category"
-                    label={({ category, percentage }) => `${category} (${percentage?.toFixed(0) || 0}%)`}
-                    labelLine={false}
-                  >
-                    {expensesByCategory.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {expensesByCategory.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expensesByCategory}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="amount"
+                      nameKey="category"
+                      label={({ category, percentage }) => `${category} (${percentage?.toFixed(0) || 0}%)`}
+                      labelLine={false}
+                    >
+                      {expensesByCategory.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No expenses for this month
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -233,12 +289,12 @@ const Dashboard = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="month"
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickFormatter={(value) => `₹${value / 1000}k`}
@@ -300,13 +356,17 @@ const Dashboard = () => {
                 <p className="text-lg font-semibold">{formatCurrency(summary.totalExpenses / 30)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary">
-              <div className="p-2 rounded-full bg-success/10">
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10">
+              <div className="p-2 rounded-full bg-success/20">
                 <PiggyBank className="h-5 w-5 text-success" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Top Expense</p>
-                <p className="text-lg font-semibold">Rent</p>
+                <p className="text-lg font-semibold">
+                  {expensesByCategory.length > 0
+                    ? expensesByCategory.sort((a, b) => b.amount - a.amount)[0].category
+                    : "None"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary">
@@ -315,7 +375,9 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Budget Status</p>
-                <p className="text-lg font-semibold text-success">On Track</p>
+                <p className="text-lg font-semibold text-success">
+                  {savingsPercentage > "20" ? "On Track" : "Needs Attention"}
+                </p>
               </div>
             </div>
           </div>
