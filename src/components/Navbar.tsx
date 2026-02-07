@@ -17,10 +17,10 @@ const Navbar = () => {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-            F
+            S
           </div>
           <span className="hidden font-semibold text-xl text-foreground md:inline-block">
-            FinBuddy
+            SpendDex
           </span>
         </div>
 

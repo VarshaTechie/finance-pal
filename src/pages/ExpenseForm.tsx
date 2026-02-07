@@ -19,6 +19,7 @@ const categories: { value: ExpenseCategory; label: string; icon: string }[] = [
   { value: 'Rent', label: 'Rent & Housing', icon: '🏠' },
   { value: 'Entertainment', label: 'Entertainment', icon: '🎬' },
   { value: 'Utilities', label: 'Utilities & Bills', icon: '💡' },
+  { value: 'Shopping', label: 'Shopping', icon: '🛍️' },
   { value: 'Others', label: 'Others', icon: '📦' },
 ];
 

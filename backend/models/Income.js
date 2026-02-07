@@ -26,7 +26,7 @@ const incomeSchema = new mongoose.Schema({
     }
 });
 
-// Ensure only one income record per user per month
+// Ensure only one income record per user per month (we aggregate multiple sources into one record)
 incomeSchema.index({ userId: 1, month: 1 }, { unique: true });
 
 const Income = mongoose.model('Income', incomeSchema);

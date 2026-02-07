@@ -21,6 +21,7 @@ export interface Income {
   currency: string;
   month: string;
   year: number;
+  source?: string;
   createdAt?: string;
 }
 
@@ -39,7 +40,17 @@ export type ExpenseCategory =
   | 'Rent'
   | 'Entertainment'
   | 'Utilities'
+  | 'Shopping'
   | 'Others';
+
+export type IncomeSource =
+  | 'Salary'
+  | 'Freelance'
+  | 'Business'
+  | 'Investment'
+  | 'Bonus'
+  | 'Rental'
+  | 'Other';
 
 export interface Summary {
   monthlyIncome: number;
@@ -100,7 +111,8 @@ export const incomeApi = {
         email: "main@finance.com",
         monthlyIncome: income.amount,
         month: monthIndex, // Pass month index (0-11)
-        year: income.year
+        year: income.year,
+        source: income.source || 'Salary' // Include income source
       };
 
       const response = await api.post('/income', backendBody);
@@ -111,6 +123,7 @@ export const incomeApi = {
         currency: '₹',
         month: income.month,
         year: income.year,
+        source: income.source,
         id: response.data.data._id
       };
     } catch (error) {
@@ -332,6 +345,71 @@ export const newsApi = {
       return mockNews.filter(item => item.category === category);
     }
     return mockNews;
+  },
+};
+
+export const exportApi = {
+  /**
+   * Export financial data as CSV
+   * @param type - 'expenses' | 'income' | 'all'
+   * @param startDate - Optional start date (YYYY-MM-DD)
+   * @param endDate - Optional end date (YYYY-MM-DD)
+   */
+  downloadCSV: async (
+    type: 'expenses' | 'income' | 'all' = 'all',
+    startDate?: string,
+    endDate?: string
+  ): Promise<void> => {
+    try {
+      let url = `/export/${DEMO_USER_ID}?type=${type}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+
+      const response = await api.get(url, {
+        responseType: 'blob', // Important for file download
+      });
+
+      const getFilenameFromContentDisposition = (cd?: string): string | null => {
+        if (!cd) return null;
+        // Examples:
+        // content-disposition: attachment; filename="file.csv"
+        // content-disposition: attachment; filename=file.csv
+        const match = cd.match(/filename\*?=(?:UTF-8''|")?([^\";]+)\"?/i);
+        if (!match) return null;
+        try {
+          return decodeURIComponent(match[1]);
+        } catch {
+          return match[1];
+        }
+      };
+
+      // Create a blob from the response
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+      
+      // Create a temporary URL and trigger download
+      const url_blob = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url_blob;
+      
+      // Prefer server-provided filename, fallback to a reasonable default
+      const headerFilename =
+        getFilenameFromContentDisposition((response.headers as any)?.['content-disposition']) ||
+        getFilenameFromContentDisposition((response.headers as any)?.['Content-Disposition']);
+
+      const filename = headerFilename || `finance-export-${new Date().toISOString().split('T')[0]}.csv`;
+      link.setAttribute('download', filename);
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.remove();
+      window.URL.revokeObjectURL(url_blob);
+    } catch (error) {
+      console.error('CSV export failed', error);
+      throw error;
+    }
   },
 };
 

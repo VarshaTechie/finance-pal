@@ -8,11 +8,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { summaryApi, Summary } from '@/services/api';
+import { summaryApi, Summary, exportApi } from '@/services/api';
 import {
   PieChart,
   Pie,
@@ -91,6 +92,7 @@ const Dashboard = () => {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -117,6 +119,25 @@ const Dashboard = () => {
 
   const handleNextMonth = () => {
     setSelectedDate(prev => addMonths(prev, 1));
+  };
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      // Calculate date range for current selected month
+      const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+      
+      const startStr = format(startDate, 'yyyy-MM-dd');
+      const endStr = format(endDate, 'yyyy-MM-dd');
+      
+      await exportApi.downloadCSV('all', startStr, endStr);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      // You could add a toast notification here
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -159,27 +180,39 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-card border rounded-lg p-1">
+        <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={handlePrevMonth}
-            className="h-8 w-8"
+            variant="outline"
+            onClick={handleExportCSV}
+            disabled={exporting}
+            className="gap-2"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <Download className="h-4 w-4" />
+            {exporting ? 'Exporting...' : 'Export CSV'}
           </Button>
-          <span className="min-w-[140px] text-center font-medium">
-            {format(selectedDate, 'MMMM yyyy')}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleNextMonth}
-            className="h-8 w-8"
-          // Optional: Disable future dates if desired, but user might want to plan
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          
+          <div className="flex items-center gap-2 bg-card border rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePrevMonth}
+              className="h-8 w-8"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-[140px] text-center font-medium">
+              {format(selectedDate, 'MMMM yyyy')}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNextMonth}
+              className="h-8 w-8"
+            // Optional: Disable future dates if desired, but user might want to plan
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

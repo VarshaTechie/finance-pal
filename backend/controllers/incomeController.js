@@ -8,9 +8,9 @@ const { HTTP_STATUS } = require('../utils/constants');
  */
 const createOrUpdateIncome = async (req, res, next) => {
     try {
-        const { userId, name, email, monthlyIncome, month, year } = req.body;
+        const { userId, name, email, monthlyIncome, month, year, source } = req.body;
         console.log('Incoming Income Request:', JSON.stringify(req.body));
-        console.log('Checking Income Save params:', { month, year, typeM: typeof month });
+        console.log('Checking Income Save params:', { month, year, typeM: typeof month, source });
 
         // Ensure we have a valid user first
         let user;
@@ -38,13 +38,19 @@ const createOrUpdateIncome = async (req, res, next) => {
         }
 
         // If specific month/year is provided, save to Income history
+        // We keep ONE income record per user+month and ACCUMULATE the amount,
+        // so multiple income entries for the same month are added together.
         let incomeDoc = null;
         if (month !== undefined && year !== undefined) {
             const monthDate = new Date(year, month, 1); // 1st of the month
+            const incomeSource = source || 'Salary';
 
             incomeDoc = await Income.findOneAndUpdate(
                 { userId: user._id, month: monthDate },
-                { amount: monthlyIncome },
+                {
+                    $inc: { amount: monthlyIncome },
+                    $set: { source: incomeSource }
+                },
                 { new: true, upsert: true, runValidators: true }
             );
         }
